@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>賽博時空簽證護照 - Cyber Time Passport</title>
+  <link rel="stylesheet" href="passport.css">
+  <style>
+    /* Popup 專屬寬度微調 */
+    body {
+      width: 440px;
+      margin: 0;
+      background: #07090e;
+    }
+    .passport-container {
+      border-radius: 0;
+      border: none;
+      min-height: 590px;
+    }
+  </style>
+</head>
+<body>
+  <div class="passport-container" id="passportRoot">
+    <!-- 賽博護照四角防偽鉚釘 -->
+    <div class="cyber-corner corner-tl"></div>
+    <div class="cyber-corner corner-tr"></div>
+    <div class="cyber-corner corner-bl"></div>
+    <div class="cyber-corner corner-br"></div>
+
+    <!-- 頂部護照證件辨識區 -->
+    <header class="passport-header">
+      <div class="passport-id-badge">
+        <div class="holo-chip" title="全像量子防偽晶片"></div>
+        <div class="passport-title-group">
+          <h1>CYBER TIME PASSPORT <span style="font-size:10px; color:var(--neon-pink);">v1.0</span></h1>
+          <div class="sub-text">AGENT: <span id="headerAgentName">RUNNER // 0902</span></div>
+        </div>
+      </div>
+      <div class="passport-status-tag" id="headerStatusTag">CLEARANCE OK</div>
+    </header>
+
+    <!-- 護照功能切換分頁籤 -->
+    <nav class="passport-tabs">
+      <button class="tab-btn active" data-tab="stamp-clock" id="tabBtnClock">
+        <span>⏱️</span> 01 // 印章時鐘
+      </button>
+      <button class="tab-btn" data-tab="visa-pages" id="tabBtnVisa">
+        <span>📜</span> 02 // 簽證分頁
+      </button>
+      <button class="tab-btn" data-tab="settings" id="tabBtnSettings">
+        <span>⚡</span> 03 // 雲端設定
+      </button>
+    </nav>
+
+    <!-- TAB 1: 印章造型時鐘 -->
+    <section class="tab-content active" id="tabClock">
+      <!-- 項目選擇列 -->
+      <div class="project-selector-bar">
+        <div class="cyber-select-wrapper">
+          <select class="cyber-select" id="itemSelector">
+            <!-- 動態填入項目清單 -->
+          </select>
+        </div>
+        <button class="btn-add-item" id="btnOpenAddItem" title="新增通關項目">+ 新增</button>
+        <button class="btn-delete-item" id="btnDeleteItem" title="刪除選取之通關項目">🗑️ 刪除</button>
+      </div>
+
+      <!-- 印章時鐘主體 -->
+      <div class="stamp-clock-container">
+        <div class="stamp-clock-seal" id="stampClockSeal" title="點擊蓋印或暫停">
+          <!-- 雙重外環 -->
+          <div class="stamp-outer-ring"></div>
+          <div class="stamp-dial-ring"></div>
+
+          <!-- 圓形環繞印文字體 -->
+          <svg class="stamp-curved-text" viewBox="0 0 230 230">
+            <path id="curvePath" d="M 115, 115 m -95, 0 a 95,95 0 1,1 190,0 a 95,95 0 1,1 -190,0" fill="none" />
+            <text>
+              <textPath href="#curvePath" startOffset="0%">
+                ★ TEMPORAL CLEARANCE SEAL ★ CYBERSPACE TIME MATRIX ★ AUTHORIZED PASSPORT ★
+              </textPath>
+            </text>
+          </svg>
+
+          <!-- 核心計時區塊 -->
+          <div class="stamp-clock-core">
+            <div class="stamp-item-badge" id="stampItemBadge">[DEV-01] 核心程式碼開發</div>
+            <div class="stamp-digits" id="stampDigits">00:00:00</div>
+            <div class="stamp-status-label" id="stampStatusLabel">READY // 待命</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 計時控制按鈕 -->
+      <div class="timer-controls-group">
+        <button class="cyber-btn cyber-btn-start" id="btnStartTimer">
+          <span>⚡</span> 蓋印開始
+        </button>
+        <button class="cyber-btn cyber-btn-pause" id="btnPauseTimer" disabled>
+          <span>⏸️</span> 暫停
+        </button>
+        <button class="cyber-btn cyber-btn-finish" id="btnFinishTimer" disabled>
+          <span>📜</span> 完成簽證
+        </button>
+      </div>
+
+      <!-- 連線與試算表同步狀態列 -->
+      <div class="sync-indicator-bar">
+        <div style="display:flex; align-items:center;">
+          <span class="sync-dot" id="sheetStatusDot"></span>
+          <span id="sheetStatusText">GOOGLE 試算表：離線本機紀錄</span>
+        </div>
+        <a href="#" id="quickOpenSheetLink" style="color:var(--neon-cyan); text-decoration:none; font-size:9.5px;" target="_blank">
+          開啟試算表 ↗
+        </a>
+      </div>
+    </section>
+
+    <!-- TAB 2: 護照簽證分頁 -->
+    <section class="tab-content" id="tabVisa">
+      <div class="passport-page-header">
+        <span class="passport-watermark">PASSPORT VISA ENTRIES</span>
+        <div class="page-pagination-controls">
+          <button class="btn-page-nav" id="btnPrevPage" disabled>◀</button>
+          <span class="page-indicator-text" id="pageIndicatorText">PAGE 01 / 01</span>
+          <button class="btn-page-nav" id="btnNextPage" disabled>▶</button>
+        </div>
+      </div>
+
+      <!-- 簽證印章展示網格 -->
+      <div class="visa-stamps-grid" id="visaStampsGrid">
+        <!-- 動態渲染各項目的實體印章 -->
+      </div>
+    </section>
+
+    <!-- TAB 3: 雲端試算表設定 -->
+    <section class="tab-content" id="tabSettings">
+      <div class="settings-scroll-area">
+        <!-- 試算表串接設定卡 -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <span>📊</span> GOOGLE 試算表無縫同步設定
+          </div>
+
+          <div class="settings-field-group">
+            <label for="inputWebhookUrl">Google Apps Script Web App 網址 (Webhook):</label>
+            <input type="url" class="cyber-input" id="inputWebhookUrl" placeholder="https://script.google.com/macros/s/.../exec">
+            <div class="settings-help-text">完成計時後，資料將自動透過此網址寫入試算表新列。</div>
+          </div>
+
+          <div class="settings-field-group">
+            <label for="inputSheetUrl">Google 試算表檢視網址 (選填):</label>
+            <input type="url" class="cyber-input" id="inputSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
+            <div class="settings-help-text">填入後可在各處一鍵點擊開啟雲端表單檢視。</div>
+          </div>
+
+          <div class="settings-btn-row">
+            <button class="btn-secondary" id="btnSaveSettings">💾 儲存設定</button>
+            <button class="btn-secondary" id="btnTestWebhook">📶 測試連線 (PING)</button>
+            <button class="btn-secondary" id="btnOpenSheetDirect">🌐 開啟試算表</button>
+          </div>
+        </div>
+
+        <!-- 快速教學指引 -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <span>🚀</span> 3 步驟快速建立 Google 試算表同步
+          </div>
+          <div class="step-guide-box">
+            <ol>
+              <li>新建一份空白 Google 試算表，點選頂部<strong>【擴充功能】➔【Apps Script】</strong>。</li>
+              <li>點擊下方<strong>【一鍵複製 Apps Script 腳本】</strong>按鈕，清空後貼上並儲存。</li>
+              <li>點右上角<strong>【部署】➔【新增部署】</strong>，類型選<strong>「網頁應用程式」</strong>，將<strong>「誰可以存取」設為「任何人」</strong>，將產生的網址貼回上方即可！</li>
+            </ol>
+            <button class="btn-secondary" id="btnCopyScriptCode" style="margin-top:8px; width:100%; justify-content:center; color:var(--neon-yellow);">
+              📋 一鍵複製 Google Apps Script 腳本
+            </button>
+          </div>
+        </div>
+
+        <!-- 個人化與音效設定 -->
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <span>⚙️</span> 系統偏好與資料備份
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="font-size:11px;">賽博蓋印機械音效</span>
+            <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+              <input type="checkbox" id="checkSoundEnabled" checked>
+              <span style="font-size:10px; color:var(--neon-green);">啟用</span>
+            </label>
+          </div>
+
+          <div style="font-size:10px; color:var(--text-secondary); margin:8px 0 4px;">通關紀錄 CSV 試算表（相容 Excel 與 Google Sheets）：</div>
+          <div class="settings-btn-row">
+            <button class="btn-secondary" id="btnExportCsv" style="color:var(--neon-green); border-color:rgba(0,255,136,0.35);">📤 匯出 CSV</button>
+            <button class="btn-secondary" id="btnImportCsv" style="color:var(--neon-green); border-color:rgba(0,255,136,0.35);">📥 匯入 CSV</button>
+          </div>
+          <input type="file" id="importCsvInput" accept=".csv,text/csv" style="display:none;">
+
+          <div style="font-size:10px; color:var(--text-secondary); margin:10px 0 4px;">完整護照系統備份 (JSON)：</div>
+          <div class="settings-btn-row">
+            <button class="btn-secondary" id="btnExportData">📤 匯出 JSON</button>
+            <button class="btn-secondary" id="btnImportData">📥 匯入 JSON</button>
+          </div>
+          <input type="file" id="importFileInput" accept=".json" style="display:none;">
+        </div>
+      </div>
+    </section>
+
+    <!-- 底部生體條碼條 -->
+    <footer class="passport-footer-barcode">
+      <div class="cyber-barcode-lines">||| | |||| | ||| || |||||| | |||||</div>
+      <div>TEMPORAL CLEARANCE // ID: <span id="footerPassportId">TX-8820-9941</span></div>
+    </footer>
+
+    <!-- ==================== MODAL: 新增項目 ==================== -->
+    <div class="cyber-modal-overlay" id="modalAddItem">
+      <div class="cyber-modal" style="max-width:360px;">
+        <div class="cyber-modal-header">
+          <div class="cyber-modal-title">✚ 新增時空通關項目</div>
+          <button class="modal-close-btn" id="btnCloseAddItem">&times;</button>
+        </div>
+        <div class="cyber-modal-body">
+          <div class="settings-field-group">
+            <label>項目名稱 (必填):</label>
+            <input type="text" class="cyber-input" id="newProjectName" placeholder="例如：開發賽博前台">
+          </div>
+          <div class="settings-field-group">
+            <label>賽博代號 (自訂或自動產生):</label>
+            <input type="text" class="cyber-input" id="newProjectCode" placeholder="例如：DEV-09">
+          </div>
+          <div class="settings-field-group">
+            <label>專屬霓虹色彩標籤:</label>
+            <div class="color-picker-row" id="colorPickerRow">
+              <div class="color-dot active" data-color="#00f0ff" style="background:#00f0ff;"></div>
+              <div class="color-dot" data-color="#ff0055" style="background:#ff0055;"></div>
+              <div class="color-dot" data-color="#00ff88" style="background:#00ff88;"></div>
+              <div class="color-dot" data-color="#ffe600" style="background:#ffe600;"></div>
+              <div class="color-dot" data-color="#b026ff" style="background:#b026ff;"></div>
+              <div class="color-dot" data-color="#ff7700" style="background:#ff7700;"></div>
+            </div>
+          </div>
+          <button class="cyber-btn cyber-btn-start" id="btnConfirmAddItem" style="width:100%; margin-top:10px;">
+            確認建立項目
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MODAL: 完成簽證輸入備註 ==================== -->
+    <div class="cyber-modal-overlay" id="modalFinish">
+      <div class="cyber-modal" style="max-width:380px;">
+        <div class="cyber-modal-header">
+          <div class="cyber-modal-title">📜 蓋印完成時空簽證</div>
+          <button class="modal-close-btn" id="btnCloseFinish">&times;</button>
+        </div>
+        <div class="cyber-modal-body">
+          <div style="text-align:center; margin-bottom:10px;">
+            <div style="font-size:10px; color:var(--text-secondary);">本次通關經過時長</div>
+            <div style="font-family:var(--font-cyber); font-size:24px; color:var(--neon-green); font-weight:900;" id="finishModalDuration">
+              00:00:00
+            </div>
+          </div>
+          <label style="font-size:10px; color:var(--text-secondary);">簽證備註 / 本次任務詳細說明 (選填):</label>
+          <textarea class="notes-input-area" id="finishNotesInput" placeholder="寫下本次時段的進度、收穫或工作摘要..."></textarea>
+          <button class="cyber-btn cyber-btn-finish" id="btnSubmitFinish" style="width:100%;">
+            ⚡ 蓋印儲存並同步至試算表
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MODAL: 印章詳細說明檢視器 ==================== -->
+    <div class="cyber-modal-overlay" id="modalInspector">
+      <div class="cyber-modal">
+        <div class="cyber-modal-header">
+          <div class="cyber-modal-title" id="inspectorTitle">時空簽證詳細說明</div>
+          <button class="modal-close-btn" id="btnCloseInspector">&times;</button>
+        </div>
+        <div class="cyber-modal-body">
+          <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:6px; border:1px solid rgba(0,240,255,0.2); display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-size:10px; color:var(--text-secondary);">累積通關總時長</div>
+              <div style="font-family:var(--font-cyber); font-size:18px; color:var(--neon-cyan); font-weight:900;" id="inspectorTotalTime">
+                00:00:00
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:10px; color:var(--text-secondary);">累計蓋印</div>
+              <div style="font-family:var(--font-cyber); font-size:16px; color:var(--neon-yellow); font-weight:700;" id="inspectorCount">
+                0 次
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:10px; color:var(--text-secondary); font-weight:700;">歷史簽證歷程日誌</span>
+            <button class="btn-secondary" id="btnInspectorOpenSheet" style="padding:2px 8px; font-size:9px;">
+              開啟試算表 ↗
+            </button>
+          </div>
+
+          <div class="session-history-list" id="inspectorSessionList">
+            <!-- 動態填入歷史清單 -->
+          </div>
+
+          <div style="margin-top:14px; padding-top:10px; border-top:1px dashed rgba(255,0,85,0.3); display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:9.5px; color:var(--text-muted);">項目維護操作</span>
+            <button class="btn-secondary" id="btnInspectorDeleteItem" style="color:var(--neon-pink); border-color:rgba(255,0,85,0.4); font-size:9.5px;">
+              🗑️ 刪除此項目與簽證印章
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="sound.js"></script>
+  <script src="passport-core.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

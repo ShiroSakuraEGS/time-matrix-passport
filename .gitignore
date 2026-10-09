@@ -1,0 +1,21 @@
+# 系統與編輯器暫存檔
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.bak
+*.log
+
+# 編輯器組態
+.vscode/
+.idea/
+*.swp
+
+# Node 暫存（若有）
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 備份與本地資料匯出暫存
+*.local
