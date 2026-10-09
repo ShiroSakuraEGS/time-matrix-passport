@@ -1,6 +1,6 @@
 /**
  * 賽博時空簽證護照 - 網頁懸浮小工具 (In-Page Content Script)
- * 讓使用者在瀏覽任何網頁時，皆可透過右下角賽博印章徽章展開護照視窗並進行計時與蓋印
+ * 輕量化常駐於網頁右下角，點擊可展開賽博護照面板；具備完全樣式隔離與開關控制
  */
 
 (function () {
@@ -14,13 +14,14 @@
   const badge = document.createElement('div');
   badge.className = 'cyber-floating-badge';
   badge.id = 'cyberPassportBadge';
-  badge.title = '開啟賽博時空簽證護照';
+  badge.title = '開啟賽博時空簽證護照 (懸浮小工具)';
   badge.innerHTML = `
+    <div class="badge-close-btn" id="badgeCloseBtn" title="隱藏此網頁印章徽章">&times;</div>
     <div class="badge-icon">⏱️</div>
     <div class="badge-timer-text" id="badgeTimerText">00:00:00</div>
   `;
 
-  // 2. 懸浮護照全功能視窗 (Floating Passport Window)
+  // 2. 懸浮護照視窗 (Floating Passport Window)
   const windowEl = document.createElement('div');
   windowEl.className = 'cyber-passport-window';
   windowEl.id = 'cyberPassportWindow';
@@ -34,12 +35,11 @@
     <span>✦ CYBER TIME MATRIX // PASSPORT WIDGET</span>
     <div class="cyber-window-actions">
       <button class="cyber-win-btn" id="cyberBtnMin" title="最小化為徽章">_</button>
-      <button class="cyber-win-btn close" id="cyberBtnClose" title="關閉">&times;</button>
+      <button class="cyber-win-btn close" id="cyberBtnClose" title="關閉視窗">&times;</button>
     </div>
   `;
 
-  // 護照本體嵌入區 (Iframe 或直接 DOM 渲染)
-  // 使用 iframe 嵌入 extension popup.html 可確保 CSS/JS 完全隔離且無衝突！
+  // 護照嵌入 Iframe（惰性載入，點擊展開時才賦值 src，避免未展開前觸發任何網路連線）
   const iframe = document.createElement('iframe');
   iframe.id = 'cyberPassportIframe';
   iframe.style.width = '440px';
@@ -47,10 +47,7 @@
   iframe.style.border = 'none';
   iframe.style.borderRadius = '0 0 12px 12px';
   iframe.style.backgroundColor = '#07090e';
-
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
-    iframe.src = chrome.runtime.getURL('popup.html');
-  }
+  iframe.setAttribute('allow', 'clipboard-write');
 
   windowEl.appendChild(titlebar);
   windowEl.appendChild(iframe);
@@ -59,12 +56,35 @@
   wrapper.appendChild(windowEl);
   document.body.appendChild(wrapper);
 
+  // 檢查使用者是否已關閉網頁懸浮小工具
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(['settings'], (res) => {
+      if (res.settings && res.settings.floatingWidgetEnabled === false) {
+        wrapper.style.display = 'none';
+      }
+    });
+
+    // 監聽設定變更以即時隱藏或顯示
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.settings && changes.settings.newValue) {
+        const enabled = changes.settings.newValue.floatingWidgetEnabled !== false;
+        wrapper.style.display = enabled ? 'block' : 'none';
+      }
+    });
+  }
+
   // ---------------- 狀態切換 ----------------
   let isOpen = false;
 
   function toggleWindow(open) {
     isOpen = (typeof open === 'boolean') ? open : !isOpen;
     if (isOpen) {
+      // 首次展開時才載入 popup.html 網址
+      if (!iframe.src || iframe.src === 'about:blank') {
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+          iframe.src = chrome.runtime.getURL('popup.html');
+        }
+      }
       windowEl.style.display = 'flex';
       badge.style.display = 'none';
     } else {
@@ -73,7 +93,17 @@
     }
   }
 
-  badge.addEventListener('click', () => toggleWindow(true));
+  badge.addEventListener('click', (e) => {
+    if (e.target.id === 'badgeCloseBtn') return;
+    toggleWindow(true);
+  });
+
+  // 徽章關閉按鈕（隱藏小工具）
+  document.getElementById('badgeCloseBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    wrapper.style.display = 'none';
+  });
+
   document.getElementById('cyberBtnMin').addEventListener('click', () => toggleWindow(false));
   document.getElementById('cyberBtnClose').addEventListener('click', () => toggleWindow(false));
 
@@ -91,7 +121,6 @@
     initialLeft = rect.left;
     initialTop = rect.top;
 
-    // 清除 bottom/right 定位，改為 top/left
     windowEl.style.bottom = 'auto';
     windowEl.style.right = 'auto';
     windowEl.style.left = `${initialLeft}px`;

@@ -25,18 +25,27 @@
   --font-mono: 'Share Tech Mono', Consolas, monospace;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  -webkit-font-smoothing: antialiased;
-}
-
-body {
+/* 獨立頁面 (Popup / Preview) 專用 body 樣式 */
+body.passport-standalone-body {
   background-color: var(--bg-space);
   color: var(--text-primary);
   font-family: var(--font-mono);
   overflow-x: hidden;
+  user-select: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 護照元件內部樣式重設，嚴格限制於 .passport-container 內，絕不污染宿主網頁 */
+.passport-container,
+.passport-container * {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+.passport-container {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
   user-select: none;
 }
 

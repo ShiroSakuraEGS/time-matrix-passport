@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnOpenSheetDirect = document.getElementById('btnOpenSheetDirect');
   const btnCopyScriptCode = document.getElementById('btnCopyScriptCode');
   const checkSoundEnabled = document.getElementById('checkSoundEnabled');
+  const checkFloatingEnabled = document.getElementById('checkFloatingEnabled');
   const btnExportCsv = document.getElementById('btnExportCsv');
   const btnImportCsv = document.getElementById('btnImportCsv');
   const importCsvInput = document.getElementById('importCsvInput');
@@ -507,6 +508,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     inputWebhookUrl.value = s.webhookUrl || '';
     inputSheetUrl.value = s.sheetUrl || '';
     checkSoundEnabled.checked = s.soundEnabled !== false;
+    if (checkFloatingEnabled) {
+      checkFloatingEnabled.checked = s.floatingWidgetEnabled !== false;
+    }
   }
 
   btnSaveSettings.addEventListener('click', async () => {
@@ -514,11 +518,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const webhookUrl = inputWebhookUrl.value.trim();
     const sheetUrl = inputSheetUrl.value.trim();
     const soundEnabled = checkSoundEnabled.checked;
+    const floatingWidgetEnabled = checkFloatingEnabled ? checkFloatingEnabled.checked : true;
 
     await window.passportCore.updateSettings({
       webhookUrl,
       sheetUrl,
-      soundEnabled
+      soundEnabled,
+      floatingWidgetEnabled
     });
 
     updateSyncStatusUI();
@@ -626,6 +632,13 @@ function getOrCreateLogSheet() {
   checkSoundEnabled.addEventListener('change', () => {
     window.passportCore.updateSettings({ soundEnabled: checkSoundEnabled.checked });
   });
+
+  // 網頁懸浮小工具切換
+  if (checkFloatingEnabled) {
+    checkFloatingEnabled.addEventListener('change', () => {
+      window.passportCore.updateSettings({ floatingWidgetEnabled: checkFloatingEnabled.checked });
+    });
+  }
 
   // 匯出 CSV 格式
   btnExportCsv.addEventListener('click', () => {
