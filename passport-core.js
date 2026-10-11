@@ -179,6 +179,59 @@ class PassportCore {
     this.notify();
   }
 
+  // 轉移單筆簽證紀錄至另一個通關項目（修正記錯項目的情況）
+  async transferSession(sessionId, newItemId) {
+    if (!sessionId || !newItemId) return false;
+    const sess = this.sessions.find(s => s.id === sessionId);
+    const targetItem = this.items.find(i => i.id === newItemId);
+    if (!sess || !targetItem) return false;
+
+    sess.itemId = targetItem.id;
+    sess.itemName = targetItem.name;
+    sess.itemCode = targetItem.code;
+
+    await this.storageSet({ sessions: this.sessions });
+    this.notify();
+    return true;
+  }
+
+  // 手動補登簽證紀錄（漏記時間補登，自動計算時長並同步至試算表）
+  async addManualSession(itemId, durationSec, notes = '', customEndTimeIso = null) {
+    if (!itemId || !durationSec || durationSec < 1) return null;
+
+    const item = this.items.find(i => i.id === itemId) || {
+      id: itemId,
+      name: '自訂工作項目',
+      code: 'SYS-MANUAL',
+      color: '#ffe600'
+    };
+
+    const endDate = customEndTimeIso ? new Date(customEndTimeIso) : new Date();
+    const startDate = new Date(endDate.getTime() - durationSec * 1000);
+
+    const sessionRecord = {
+      id: 'pass_manual_' + Date.now(),
+      itemId: item.id,
+      itemName: item.name,
+      itemCode: item.code,
+      startTime: this.formatDate(startDate),
+      endTime: this.formatDate(endDate),
+      durationSec: durationSec,
+      durationFormatted: this.formatTime(durationSec),
+      notes: (notes || '').trim() || '手動補登紀錄',
+      timestamp: this.formatDate(endDate),
+      synced: false
+    };
+
+    this.sessions.unshift(sessionRecord);
+    await this.storageSet({ sessions: this.sessions });
+
+    // 同步至 Google 試算表
+    this.syncSessionToGoogleSheet(sessionRecord);
+    this.notify();
+    return sessionRecord;
+  }
+
   // 更新設定
   async updateSettings(newSettings) {
     this.settings = Object.assign({}, this.settings, newSettings);
@@ -244,8 +297,16 @@ class PassportCore {
     this.notify();
   }
 
-  // 完成計時並記錄（可輸入備註、寫入 Google 試算表）
-  async finishTimer(notes = '') {
+  // 切換目前正在計時的項目（計時中選錯可即時修正，不中斷累計秒數）
+  async switchActiveTimerItem(newItemId) {
+    if (!newItemId) return;
+    this.activeTimer.itemId = newItemId;
+    await this.storageSet({ activeTimer: this.activeTimer });
+    this.notify();
+  }
+
+  // 完成計時並記錄（可輸入備註、指定更正項目、寫入 Google 試算表）
+  async finishTimer(notes = '', targetItemId = null) {
     if (!this.activeTimer.isRunning && this.activeTimer.accumulatedSec === 0) return null;
 
     const totalSec = this.getCurrentElapsedSeconds();
@@ -255,7 +316,8 @@ class PassportCore {
       return null;
     }
 
-    const item = this.items.find(i => i.id === this.activeTimer.itemId) || {
+    const finalItemId = targetItemId || this.activeTimer.itemId;
+    const item = this.items.find(i => i.id === finalItemId) || {
       id: 'unknown',
       name: '未定義項目',
       code: 'SYS-UNK',

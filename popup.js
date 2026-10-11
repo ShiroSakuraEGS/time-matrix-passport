@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 取得 DOM 元件
   const itemSelector = document.getElementById('itemSelector');
+  const btnOpenManualEntry = document.getElementById('btnOpenManualEntry');
   const btnOpenAddItem = document.getElementById('btnOpenAddItem');
   const btnDeleteItem = document.getElementById('btnDeleteItem');
   const stampClockSeal = document.getElementById('stampClockSeal');
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnStartTimer = document.getElementById('btnStartTimer');
   const btnPauseTimer = document.getElementById('btnPauseTimer');
   const btnFinishTimer = document.getElementById('btnFinishTimer');
+  const btnResetTimer = document.getElementById('btnResetTimer');
 
   const sheetStatusDot = document.getElementById('sheetStatusDot');
   const sheetStatusText = document.getElementById('sheetStatusText');
@@ -60,6 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modalFinish = document.getElementById('modalFinish');
   const btnCloseFinish = document.getElementById('btnCloseFinish');
   const finishModalDuration = document.getElementById('finishModalDuration');
+  const finishItemSelector = document.getElementById('finishItemSelector');
   const finishNotesInput = document.getElementById('finishNotesInput');
   const btnSubmitFinish = document.getElementById('btnSubmitFinish');
 
@@ -71,6 +74,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const inspectorSessionList = document.getElementById('inspectorSessionList');
   const btnInspectorOpenSheet = document.getElementById('btnInspectorOpenSheet');
   const btnInspectorDeleteItem = document.getElementById('btnInspectorDeleteItem');
+
+  const modalManualEntry = document.getElementById('modalManualEntry');
+  const btnCloseManualEntry = document.getElementById('btnCloseManualEntry');
+  const manualItemSelector = document.getElementById('manualItemSelector');
+  const manualHours = document.getElementById('manualHours');
+  const manualMinutes = document.getElementById('manualMinutes');
+  const manualEndTime = document.getElementById('manualEndTime');
+  const manualNotesInput = document.getElementById('manualNotesInput');
+  const btnSubmitManualEntry = document.getElementById('btnSubmitManualEntry');
 
   let selectedColor = '#00f0ff';
   let inspectingItemId = null;
@@ -125,9 +137,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  itemSelector.addEventListener('change', () => {
+  itemSelector.addEventListener('change', async () => {
     window.cyberSound.playClickSound();
     updateSelectedBadge();
+
+    // 🌟 情境 1：若目前正在計時中，即時將計時目標切換為新選項目（累積秒數不中斷）
+    const timer = window.passportCore.activeTimer;
+    if (timer && timer.isRunning && itemSelector.value) {
+      await window.passportCore.switchActiveTimerItem(itemSelector.value);
+    }
   });
 
   // ---------------- 3. 印章時鐘與計時器動態更新 ----------------
@@ -143,7 +161,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnPauseTimer.disabled = false;
       btnPauseTimer.innerHTML = '<span>⏸️</span> 暫停';
       btnFinishTimer.disabled = false;
-      itemSelector.disabled = true;
+      btnResetTimer.disabled = false;
+      itemSelector.disabled = false; // 允許計時中隨時更換項目
     } else if (timer.isRunning && timer.isPaused) {
       stampClockSeal.className = 'stamp-clock-seal paused';
       stampStatusLabel.textContent = 'PAUSED // 暫停中';
@@ -151,7 +170,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnPauseTimer.disabled = false;
       btnPauseTimer.innerHTML = '<span>▶️</span> 繼續';
       btnFinishTimer.disabled = false;
-      itemSelector.disabled = true;
+      btnResetTimer.disabled = false;
+      itemSelector.disabled = false; // 允許暫停中隨時更換項目
     } else {
       stampClockSeal.className = 'stamp-clock-seal';
       stampStatusLabel.textContent = 'READY // 待命';
@@ -159,6 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnPauseTimer.disabled = true;
       btnPauseTimer.innerHTML = '<span>⏸️</span> 暫停';
       btnFinishTimer.disabled = (elapsedSec === 0);
+      btnResetTimer.disabled = (elapsedSec === 0);
       itemSelector.disabled = false;
     }
   }
@@ -210,12 +231,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateTimerUI();
   });
 
+  // 點擊【捨棄 / 重設計時】（情境 4：選錯了直接放棄本次計時）
+  btnResetTimer.addEventListener('click', async () => {
+    window.cyberSound.playClickSound();
+    const confirmed = confirm('確定要放棄並重設本次計時嗎？\n累積的秒數將會直接歸零，不保留任何紀錄。');
+    if (!confirmed) return;
+
+    window.cyberSound.playClickSound();
+    await window.passportCore.resetTimer();
+    updateTimerUI();
+  });
+
   // 點擊【完成簽證】
   btnFinishTimer.addEventListener('click', async () => {
     triggerStampAnimation();
     const elapsedSec = window.passportCore.getCurrentElapsedSeconds();
     finishModalDuration.textContent = window.passportCore.formatTime(elapsedSec);
     finishNotesInput.value = '';
+
+    // 🌟 情境 2：動態填入所有通關項目至 finishItemSelector，並預選當前項目供使用者隨時修正
+    finishItemSelector.innerHTML = '';
+    const currentItemId = window.passportCore.activeTimer.itemId || itemSelector.value;
+    window.passportCore.items.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = `[${item.code}] ${item.name}`;
+      if (item.id === currentItemId) opt.selected = true;
+      finishItemSelector.appendChild(opt);
+    });
+
     modalFinish.classList.add('active');
   });
 
@@ -223,13 +267,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnSubmitFinish.addEventListener('click', async () => {
     window.cyberSound.playStampSound();
     const notes = finishNotesInput.value;
+    const targetItemId = finishItemSelector.value || window.passportCore.activeTimer.itemId;
     modalFinish.classList.remove('active');
 
     // 顯示同步動畫
     sheetStatusDot.className = 'sync-dot syncing';
     sheetStatusText.textContent = '資料封包傳輸寫入中...';
 
-    const session = await window.passportCore.finishTimer(notes);
+    const session = await window.passportCore.finishTimer(notes, targetItemId);
     window.cyberSound.playSuccessSound();
 
     setTimeout(() => {
@@ -376,11 +421,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             <span>📅 ${escapeHtml(sess.startTime || sess.timestamp)}</span>
             <div style="display:flex; align-items:center; gap:6px;">
               <span class="session-item-duration">⏱️ ${sess.durationFormatted}</span>
+              <button class="btn-transfer-session" title="轉移此筆紀錄至其他項目">🔁 轉移</button>
               <button class="btn-del-session" title="刪除此筆紀錄">&times;</button>
             </div>
           </div>
           ${sess.notes ? `<div class="session-item-notes">📝 ${escapeHtml(sess.notes)}</div>` : ''}
         `;
+
+        // 🌟 情境 3：單筆紀錄轉移至其他通關項目
+        const transferBtn = itemEl.querySelector('.btn-transfer-session');
+        transferBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const otherItems = window.passportCore.items.filter(i => i.id !== sess.itemId);
+          if (otherItems.length === 0) {
+            alert('目前沒有其他通關項目可供轉移！請先點擊【+ 新增】建立其他項目。');
+            return;
+          }
+
+          const optionsText = otherItems.map((item, idx) => `${idx + 1}. [${item.code}] ${item.name}`).join('\n');
+          const choice = prompt(`【時空簽證轉移】\n請輸入目標通關項目編號 (1 ~ ${otherItems.length})：\n\n${optionsText}`);
+          if (!choice) return;
+
+          const chosenIdx = parseInt(choice.trim(), 10) - 1;
+          if (isNaN(chosenIdx) || chosenIdx < 0 || chosenIdx >= otherItems.length) {
+            alert('⚠️ 輸入的編號不正確，已取消轉移。');
+            return;
+          }
+
+          const targetItem = otherItems[chosenIdx];
+          window.cyberSound.playStampSound();
+          await window.passportCore.transferSession(sess.id, targetItem.id);
+          alert(`🎉 已成功將此筆簽證紀錄轉移至【${targetItem.name} (${targetItem.code})】！`);
+
+          openInspectorModal(itemId);
+          renderVisaPages();
+          renderItemSelector();
+        });
 
         // 單筆紀錄刪除按鈕
         const delBtn = itemEl.querySelector('.btn-del-session');
@@ -500,6 +576,79 @@ document.addEventListener('DOMContentLoaded', async () => {
     itemSelector.value = newItem.id;
     updateSelectedBadge();
     renderVisaPages();
+  });
+
+  // ---------------- 7.1 手動補登通關時數紀錄 (漏記時間補登) ----------------
+  btnOpenManualEntry.addEventListener('click', () => {
+    window.cyberSound.playClickSound();
+
+    // 動態填入所有可用通關項目
+    manualItemSelector.innerHTML = '';
+    const currentSelectedId = itemSelector.value;
+    window.passportCore.items.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = `[${item.code}] ${item.name}`;
+      if (item.id === currentSelectedId) opt.selected = true;
+      manualItemSelector.appendChild(opt);
+    });
+
+    // 預設補登時長為 1 小時 0 分鐘（符合最常見的漏記時長）
+    manualHours.value = 1;
+    manualMinutes.value = 0;
+
+    // 預設完成時間為當前本機時間
+    const now = new Date();
+    const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    manualEndTime.value = localIso;
+
+    manualNotesInput.value = '';
+    modalManualEntry.classList.add('active');
+  });
+
+  btnCloseManualEntry.addEventListener('click', () => {
+    window.cyberSound.playClickSound();
+    modalManualEntry.classList.remove('active');
+  });
+
+  // 確認送出手動補登
+  btnSubmitManualEntry.addEventListener('click', async () => {
+    const hrs = parseInt(manualHours.value, 10) || 0;
+    const mins = parseInt(manualMinutes.value, 10) || 0;
+    const totalSec = (hrs * 3600) + (mins * 60);
+
+    if (totalSec <= 0) {
+      alert('⚠️ 請輸入大於 0 的補登時長（小時或分鐘）！');
+      return;
+    }
+
+    const selectedItemId = manualItemSelector.value;
+    if (!selectedItemId) {
+      alert('⚠️ 請選擇欲補登的通關項目！');
+      return;
+    }
+
+    const notes = manualNotesInput.value;
+    const customTime = manualEndTime.value ? new Date(manualEndTime.value).toISOString() : null;
+
+    modalManualEntry.classList.remove('active');
+    window.cyberSound.playStampSound();
+
+    // 顯示同步動畫
+    sheetStatusDot.className = 'sync-dot syncing';
+    sheetStatusText.textContent = '手動補登封包傳輸寫入中...';
+
+    const session = await window.passportCore.addManualSession(selectedItemId, totalSec, notes, customTime);
+    window.cyberSound.playSuccessSound();
+
+    setTimeout(() => {
+      updateSyncStatusUI();
+      renderVisaPages();
+      renderItemSelector();
+      const targetItem = window.passportCore.items.find(i => i.id === selectedItemId);
+      const itemName = targetItem ? targetItem.name : '指定項目';
+      alert(`🎉 成功為【${itemName}】手動補登 ${hrs > 0 ? hrs + '小時 ' : ''}${mins}分鐘 的時空簽證紀錄！`);
+    }, 600);
   });
 
   // ---------------- 8. 設定頁面控制 ----------------

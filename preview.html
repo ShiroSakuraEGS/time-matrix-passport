@@ -143,6 +143,7 @@
             <!-- 動態填入項目清單 -->
           </select>
         </div>
+        <button class="btn-manual-entry" id="btnOpenManualEntry" title="手動補登通關時數紀錄">✍️ 補登</button>
         <button class="btn-add-item" id="btnOpenAddItem" title="新增通關項目">+ 新增</button>
         <button class="btn-delete-item" id="btnDeleteItem" title="刪除選取之通關項目">🗑️ 刪除</button>
       </div>
@@ -183,6 +184,9 @@
         </button>
         <button class="cyber-btn cyber-btn-finish" id="btnFinishTimer" disabled>
           <span>📜</span> 完成簽證
+        </button>
+        <button class="cyber-btn cyber-btn-reset" id="btnResetTimer" disabled title="放棄本次計時並重設歸零">
+          <span>❌</span> 捨棄
         </button>
       </div>
 
@@ -353,6 +357,10 @@
               00:00:00
             </div>
           </div>
+          <div class="settings-field-group" style="margin-bottom:10px;">
+            <label style="font-size:10px; color:var(--text-secondary);">更正所屬通關項目 (選填/切換):</label>
+            <select class="cyber-select" id="finishItemSelector" style="width:100%;"></select>
+          </div>
           <label style="font-size:10px; color:var(--text-secondary);">簽證備註 / 本次任務詳細說明 (選填):</label>
           <textarea class="notes-input-area" id="finishNotesInput" placeholder="寫下本次時段的進度、收穫或工作摘要..."></textarea>
           <button class="cyber-btn cyber-btn-finish" id="btnSubmitFinish" style="width:100%;">
@@ -402,6 +410,47 @@
               🗑️ 刪除此項目與簽證印章
             </button>
           </div>
+        </div>
+    <!-- ==================== MODAL: 手動補登時長 ==================== -->
+    <div class="cyber-modal-overlay" id="modalManualEntry">
+      <div class="cyber-modal" style="max-width:390px;">
+        <div class="cyber-modal-header">
+          <div class="cyber-modal-title">✍️ 手動補登通關時數紀錄</div>
+          <button class="modal-close-btn" id="btnCloseManualEntry">&times;</button>
+        </div>
+        <div class="cyber-modal-body">
+          <div class="settings-field-group">
+            <label>通關項目 (必選):</label>
+            <select class="cyber-select" id="manualItemSelector" style="width:100%;"></select>
+          </div>
+
+          <div class="settings-field-group">
+            <label>補登時長 (小時 / 分鐘):</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <div style="flex:1; display:flex; align-items:center; gap:6px;">
+                <input type="number" class="cyber-input" id="manualHours" min="0" max="99" value="1" style="text-align:center;">
+                <span style="font-size:11px; color:var(--text-secondary);">小時</span>
+              </div>
+              <div style="flex:1; display:flex; align-items:center; gap:6px;">
+                <input type="number" class="cyber-input" id="manualMinutes" min="0" max="59" value="0" style="text-align:center;">
+                <span style="font-size:11px; color:var(--text-secondary);">分鐘</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-field-group">
+            <label>通關完成時間 (選填，預設為當前):</label>
+            <input type="datetime-local" class="cyber-input" id="manualEndTime">
+          </div>
+
+          <div class="settings-field-group">
+            <label>簽證備註 / 任務說明 (選填):</label>
+            <textarea class="notes-input-area" id="manualNotesInput" style="min-height:55px; margin:4px 0 0;" placeholder="例如：手動補登：AI 工作項目處理 (1 小時)"></textarea>
+          </div>
+
+          <button class="cyber-btn cyber-btn-finish" id="btnSubmitManualEntry" style="width:100%; margin-top:8px;">
+            ⚡ 蓋印補登並同步至試算表
+          </button>
         </div>
       </div>
     </div>
